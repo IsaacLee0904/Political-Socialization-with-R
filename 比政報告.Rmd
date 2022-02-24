@@ -1,0 +1,318 @@
+---
+title: "初探教育資源與政治參與之關聯性"
+author: "Lee Hung Wen"
+date: "6/19/2021"
+output:
+  html_document:
+    df_print: paged
+---
+
+#### 學校資源與參與太陽花學運與否之關聯
+### Load the data
+```{r}
+library(haven)
+year1 <- read_sav("/Users/wen/Desktop/台政會/台政會數據/鞏固世代大ㄧ/data.sav") ## 2012年(101)
+year4 <- read_sav("/Users/wen/Documents/碩二下/比較政治/比政期末報告/data/data(大四).sav") ## 2015年(104)
+library(readxl)
+PRS_data <-  read_excel("/Users/wen/Documents/碩二下/比較政治/比政期末報告/data/PRS總表.xlsx")
+EDU_data <-  read_excel("/Users/wen/Documents/碩二下/比較政治/比政期末報告/data/edu_data.xlsx")
+library(ggplot2) 
+```
+
+
+### Plot the basic data
+```{r}
+## 七所大學平均每生經常支出各年趨勢
+prs <- (PRS_data$value)/10000
+ggplot(data = PRS_data ,aes(x = year,y = prs,group = School,color = School,shape = 
+                              School))+geom_point()+geom_line()+xlab("Year")+ylab("PRS/10000")+theme_bw()
+
+## 台灣15歲以上大學教育程度人口面積圖
+ggplot(data = EDU_data, aes(x = year, y = percentage, fill = edu)) +
+      geom_area(colour = "black", size = .2, alpha = .8) + 
+      scale_fill_brewer(palette = "Blues", breaks = rev(levels(EDU_data$edu))) + 
+      labs(x = "Year",y = "EDU%",size=10)+theme_bw() +
+      theme(axis.text.y=element_text(face="bold",color="#333333"))+
+      theme(axis.text.x=element_text(face="bold",angle=45,color="#333333"))+
+      scale_fill_discrete(name="College degree",labels=c("under","upper"))+
+      scale_fill_manual(values = c("#FFD306", "#003D79"))+
+      xlim(1997, 2019)
+```
+
+### Recode the variable
+```{r}
+attach(year4)
+### Recode DV
+# 是否有去參與太陽花學運(1=有；0＝沒有)
+comment(IS) <- "Whether involve Sunflower Movement"
+IS <- factor(IS, levels = c(0,1),labels = c("no","yes"))
+table(IS)
+year4$IS <- IS
+
+# q08：2014縣市長選舉是否有去投票(1=有；0=沒有)
+vote <- c(NA)
+vote[q08 == 1|q08 == 2|q08 == 8] <- 1
+vote[q08 == 89|q08 == 92|q08 == 93|q08 == 94] <- 0
+vote <- factor(vote, levels = c(0, 1),
+                 labels = c("no", "yes"))
+table(vote)
+
+### Recode IVS
+## School effect
+# 學校名稱(school)
+comment(school) <- "From which college"
+school <- factor(school, levels = c(1,2,3,4,5,6,7), labels=c("國立政治大學","國立中央大學","輔仁大學","國立中興大學","逢甲大學","國立成功大學","國立東華大學"))             
+table(school)
+
+# 平均每生經常支出四年總額(PRS)
+summary(PRS)
+
+
+# 與立法院的距離(distance)
+summary(distance)
+
+# 是否為社會科學院
+SS <- c(NA)
+SS[strata9 == 3] <- 1
+SS[strata9 == 1|strata9 == 2|strata9 == 4|strata9 == 5|strata9 == 6|strata9 == 7|strata9 == 8|strata9 == 9] <- 0
+SS <- factor(SS, levels = c(0, 1),
+                 labels = c("no", "yes"))
+table(SS)
+
+## Basical variable
+# 性別(gender)
+gender <- c(NA)
+gender[sex == 2] <- 0
+gender[sex == 1] <- 1
+gender <- factor(gender, levels = c(0, 1),
+                 labels = c("female", "male"))
+table(gender)
+year4$gender <- gender
+
+# R2c：喜歡中國大陸的程度0-10 (FC)
+FC <- c(NA)
+FC[r2c == 0] <- 0
+FC[r2c == 1] <- 1
+FC[r2c == 2] <- 2
+FC[r2c == 3] <- 3
+FC[r2c == 4] <- 4
+FC[r2c == 5] <- 5
+FC[r2c == 6] <- 6
+FC[r2c == 7] <- 7
+FC[r2c == 8] <- 8
+FC[r2c == 9] <- 9
+FC[r2c == 10] <- 10
+table(FC)
+year4$FC <- FC
+
+# 政黨支持三分類(partyid3)
+partyid3[partyid3 == 1] <- 1
+partyid3[partyid3 == 2] <- 2
+partyid3[partyid3 == 3 | partyid3 == 9] <- 0
+partyid3 <- factor(partyid3, levels = c(0,1,2),
+                 labels = c("都不支持", "泛藍","泛綠"))
+table(partyid3)
+year4$partyid3 <- partyid3
+
+## Family effect
+# U4：主觀認知家庭社會階級1-5(Sclass)
+Sclass <- c(NA)
+Sclass[u04 == 1] <- 1
+Sclass[u04 == 2] <- 2
+Sclass[u04 == 3] <- 3
+Sclass[u04 == 4] <- 4
+Sclass[u04 == 5] <- 5
+table(Sclass)
+year4$Sclass <- Sclass
+
+# U11：戶籍地五都非五都(urban)
+urban <- c(NA)
+urban[u11 == 1|u11 == 2|u11 == 3|u11 == 4|u11 == 5] <- 1
+urban[u11 == 6|u11 == 8|u11 == 9|u11 == 10|u11 == 11|u11 == 12|u11 == 13|u11 == 14|u11 == 15|u11 == 16|u11 == 17|u11 == 18|u11 == 19|u11 == 20|u11 == 21|u11 == 22|u11 == 23|u11 == 31|u11 == 32] <- 0
+table(urban)
+year4$urban <- urban
+
+# d1b & d1d + d2b & d2d(FD)：
+# DAD
+fd <- c(NA)
+fd[d1b == 1|d1b == 2] <- 0
+fd[d1b == 3|d1b == 4] <- 1
+year4$fd <- fd # add fd into year4
+# MOM
+md <- c(NA)
+md[d2b == 1|d2b == 2] <- 0
+md[d2b == 3|d2b == 4] <- 1
+year4$md <- md # add md into year4
+# 家庭討論狀況政治狀況
+FD <- fd + md
+table(FD)
+year4$FD <- FD
+
+## Mate effect
+# C1 + C2 + C3 + C4：同儕政治資訊(Mate)
+C1n <- c(NA)
+C1n[c01 == 1] <- 0
+C1n[c01 == 2] <- 0
+C1n[c01 == 3] <- 1
+C1n[c01 == 4] <- 1
+
+C2n <- c(NA)
+C2n[c02 == 1] <- 0
+C2n[c02 == 2] <- 0
+C2n[c02 == 3] <- 1
+C2n[c02 == 4] <- 1
+
+C3n <- c(NA)
+C3n[c03 == 1] <- 0
+C3n[c03 == 2] <- 0
+C3n[c03 == 3] <- 1
+C3n[c03 == 4] <- 1
+
+C4n <- c(NA)
+C4n[c04 == 1] <- 0
+C4n[c04 == 2] <- 0
+C4n[c04 == 3] <- 1
+C4n[c04 == 4] <- 1
+
+Mate <- C1n + C2n + C3n + C4n
+table(Mate)
+year4$Mate <- Mate
+
+## Media effect
+# A1a + A1b + A1c + A1d + A1e
+A1an <- c(NA)
+A1an[a1a == 1] <- 0
+A1an[a1a == 2] <- 0
+A1an[a1a == 3] <- 1
+A1an[a1a == 4] <- 1
+
+A1bn <- c(NA)
+A1bn[a1b == 1] <- 0
+A1bn[a1b == 2] <- 0
+A1bn[a1b == 3] <- 1
+A1bn[a1b == 4] <- 1
+
+A1cn <- c(NA)
+A1cn[a1c == 1] <- 0
+A1cn[a1c == 2] <- 0
+A1cn[a1c == 3] <- 1
+A1cn[a1c == 4] <- 1
+
+A1dn <- c(NA)
+A1dn[a1d == 1] <- 0
+A1dn[a1d == 2] <- 0
+A1dn[a1d == 3] <- 1
+A1dn[a1d == 4] <- 1
+
+A1en <- c(NA)
+A1en[a1e == 1] <- 0
+A1en[a1e == 2] <- 0
+A1en[a1e == 3] <- 1
+A1en[a1e == 4] <- 1
+
+Media <- A1an + A1bn + A1cn + A1dn + A1en
+table(Media)
+year4$Media <- Media
+
+### Recode MVS
+# fcareer8 + mcareer8：父母親任一者為軍公教(MPE)
+# 父親是否為軍公教
+fcareer <- c(NA)
+fcareer[fcareer8 == 1] <- 1
+fcareer[fcareer8 == 2|fcareer8 == 3|fcareer8 == 4|fcareer8 == 5|fcareer8 == 6|fcareer8 == 7|fcareer8 == 8] <- 0
+# 母親是否為軍公教
+mcareer <- c(NA)
+mcareer[mcareer8 == 1] <- 1
+mcareer[mcareer8 == 2|mcareer8 == 3|mcareer8 == 4|mcareer8 == 5|mcareer8 == 6|mcareer8 == 7|mcareer8 == 8] <- 0
+# 雙親任一者為軍公教
+MPE <- fcareer + mcareer
+MPE[MPE == 1|MPE == 2] <- 1
+MPE[MPE == 0] <- 0
+MPE <- factor(MPE, levels = c(0, 1),
+                 labels = c("no", "yes"))
+table(MPE)
+year4$MPE <- MPE
+
+# U13：雙親收入總和(income)
+income <- c(NA)
+income[u13 == 1] <- 1
+income[u13 == 2] <- 2
+income[u13 == 3] <- 3
+income[u13 == 4] <- 4
+income[u13 == 5] <- 5
+income[u13 == 6] <- 6
+income[u13 == 7] <- 7
+income[u13 == 8] <- 8
+income[u13 == 9] <- 9
+table(income)
+
+# sengi＋msengi：父母親任一者為外省籍(PS)
+# 父親是否為外省籍
+fasengi <- c(NA)
+fasengi[sengi == 3] <- 1
+fasengi[sengi == 1|sengi == 2|sengi == 4|sengi == 9] <- 0
+table(fasengi)
+# 母親是否為外省籍
+masengi <- c(NA)
+masengi[msengi == 3] <- 1
+masengi[msengi == 1|msengi == 2|msengi == 4|msengi == 9] <- 0
+table(masengi)
+# 雙親任一者為外省籍
+PS <- fasengi + masengi
+PS[PS == 1|PS == 2] <- 1
+PS[PS == 0] <- 0
+PS <- factor(PS, levels = c(0, 1),
+                 labels = c("no", "yes"))
+table(PS)
+year4$PS <- PS
+```
+
+### Plot the data
+```{r}
+## 各大學參加太陽花學運分佈
+sf <- c()
+sf[q17 == 2|q08 == 3|q08 == 4] <- 1
+sf[q17 == 1] <- 0
+sf <- factor(sf, levels = c(0, 1),
+                 labels = c("no", "yes"))
+year4$sf <- sf
+
+table(school, sf)
+
+library(dplyr)
+year4 %>% 
+   select(sf, school) %>%
+   na.omit() %>%
+   ggplot(aes(x = school, fill = sf)) + 
+         geom_bar(position = "fill")+ theme_bw() +
+         labs( y = "Whether involve Sunflower Movement(%)",size=4) +
+         labs( x = "School Name",size=4) +
+         scale_y_continuous(breaks = c(0,0.25,0.5,0.75,1) ,labels =c("0%","25%","50%","75%","100%"))+
+         scale_x_continuous(breaks = c(1,2,3,4,5,6,7) ,labels =c("NCCU","NCU","FJU","NCHU","FCU","NCKU","NDHU"))+
+         theme(axis.text.x=element_text(face="bold",color="#333333")) +
+         scale_fill_discrete(name="Involve",labels=c("NO","YES")) +
+         scale_fill_manual(values = c("#FFD306", "#003D79"))
+```
+
+### Logistic Regression for Binary Dependent Variable
+```{r}
+## 學校資源與各種家庭因素
+LM <- lm(PRS ~ MPE + income + PS + urban, data = year4)
+summary(LM)
+## 政治參與與學校資源
+mod1 <- glm(vote ~ PRS  + SS + gender  + partyid3 + Sclass + FD + urban + Mate + Media, data = year4, family = "binomial"(link = "logit"))
+summary(mod1)
+mod2 <- glm(IS ~ PRS  + SS +gender + partyid3 + Sclass + FD + urban + Mate + Media, data = year4, family = "binomial"(link = "logit"))
+summary(mod2)
+mod3 <- glm(IS ~ PRS + distance + SS + gender + FC + partyid3 + Sclass + FD + urban + Mate + Media, data = year4, family = "binomial"(link = "logit"))
+summary(mod3)
+```
+
+### 模型檢測與診斷
+```{r}
+## 共線性檢測
+library(car)
+vif(mod1)
+vif(mod2)
+vif(mod3)
+```
